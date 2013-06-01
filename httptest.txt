@@ -1,0 +1,48 @@
+local tNativeP={}
+for k,v in pairs(peripheral) do
+	tNativeP[k]=v
+end
+local tNativeCo={}
+for k,v in pairs(coroutine) do
+	tNativeCo[k]=v
+end
+local nClock=os.clock()
+local nTimes=0
+local fClock=os.clock
+local nCo=-2
+local nativegetmetatable = getmetatable
+local nativetype = type
+local nativeerror = error
+
+local httpban=300
+local nHClock=os.clock()
+local nBClock
+local oldRequest=http.request
+local nHTTP=0
+local isHTTPBanned=false
+
+-- Install the lua part of the HTTP api (if enabled)
+if http then
+	function http.request(...)
+		if isHTTPBanned and fClock()-httpban>nBClock then
+			isHTTPBanned=false
+			nBClock=nil
+			nHTTP=0
+			nHClock-fClock()
+			return oldRequest(...)
+		elseif isHTTPBanned and fClock()-httpban<=nBClock then
+			nativeerror("Banned from HTTP for "..nBClock-(nHClock()-httpban).."seconds.",2)
+			return nil
+		elseif nHTTP>=20 and fClock()-10 <= nHClock then
+			isHTTPBanned=true
+			nBClock=fClock()
+			nativeerror("Spammed HTTP, banned for 5 minutes.",2)
+			return nil
+		elseif fClock()-10 >nHClock then
+			nHClock=fClock()
+			nHTTP=0
+			return oldRequest(...)
+		end
+		return oldRequest(...)
+	end
+end
